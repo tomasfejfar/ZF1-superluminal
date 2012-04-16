@@ -1,10 +1,10 @@
 <?php
+if (!defined('ZF_CLASS_CACHE')) {define('ZF_CLASS_CACHE', './cache.php');}
 class Tf_Controller_Plugin_Superluminal extends Zend_Controller_Plugin_Abstract
 {
     protected $knownClasses = array();
     protected $usesNames = array();
     protected $r = array();
-    const ZF_CLASS_CACHE = './cache.php';
 
     public function dispatchLoopShutdown()
     {
@@ -19,9 +19,9 @@ class Tf_Controller_Plugin_Superluminal extends Zend_Controller_Plugin_Abstract
     public function cache()
     {
 
-        if (file_exists(self::ZF_CLASS_CACHE)) {
+        if (file_exists(ZF_CLASS_CACHE)) {
             $this->reflectClassCache();
-            $code = file_get_contents(self::ZF_CLASS_CACHE);
+            $code = file_get_contents(ZF_CLASS_CACHE);
         } else {
             $code = "<?php\n";
         }
@@ -51,11 +51,16 @@ class Tf_Controller_Plugin_Superluminal extends Zend_Controller_Plugin_Abstract
             if (in_array('Zend\Loader\SplAutoloader', $class->getInterfaceNames())) {
                 continue;
             }
+			
+			if (in_array($class->getShortName(), array('ZendX\Loader\AutoloaderFactory.php'))) {
+				continue;
+			}
 
             $code .= $this->getCacheCode($class);
         }
 
-        file_put_contents(self::ZF_CLASS_CACHE, $code);
+        file_put_contents(ZF_CLASS_CACHE, $code);
+		file_put_contents(ZF_CLASS_CACHE, php_strip_whitespace(ZF_CLASS_CACHE));
     }
 
     /**
@@ -69,6 +74,9 @@ class Tf_Controller_Plugin_Superluminal extends Zend_Controller_Plugin_Abstract
      */
     protected function getCacheCode(Zend_Reflection_Class $r)
     {
+		if (strpos($r->getDeclaringFile()->getFilename(), 'Nette') !== false) {
+			return '';
+		}
         $useString = '';
         $usesNames = array();
 
@@ -116,9 +124,17 @@ class Tf_Controller_Plugin_Superluminal extends Zend_Controller_Plugin_Abstract
         $classFileDir  = dirname($r->getFileName());
         $classContents = str_replace('__DIR__', sprintf("'%s'", $classFileDir), $classContents);
 
+		if ($declaration == 'class Zend_Translate'){
+		d((strpos($classContents, '{') === 0));
+		d($classContents);
+		d($useString
+               . $declaration . "\n"
+               . ((strpos($classContents, '{') === 0) ? strstr($classContents, '{') : '{' . PHP_EOL . $classContents));
+		}
+		
         return $useString
                . $declaration . "\n"
-               . strstr($classContents, '{'); // messes up when 'implements' is on separate line
+			   . ((strpos($classContents, '{') === 0) ? strstr($classContents, '{') : '{' . PHP_EOL . $classContents);// messes up when 'implements' is on separate line
     }
 
     protected function getDefinition($interface) {
@@ -137,7 +153,12 @@ class Tf_Controller_Plugin_Superluminal extends Zend_Controller_Plugin_Abstract
      */
     protected function reflectClassCache()
     {
-        $scanner = new FileScanner(self::ZF_CLASS_CACHE);
-        $this->knownClasses = $scanner->getClassNames();
+		require_once ZF_CLASS_CACHE;
+        $scanner = new Zend_Reflection_File(ZF_CLASS_CACHE);
+		$this->knownClasses = array();
+		foreach($scanner->getClasses() as $class) {
+			$this->knownClasses[] = $class->getShortName();
+		}
+        //$this->knownClasses = $scanner->getClassNames();
     }
 }

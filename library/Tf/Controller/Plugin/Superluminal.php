@@ -124,14 +124,6 @@ class Tf_Controller_Plugin_Superluminal extends Zend_Controller_Plugin_Abstract
         $classFileDir  = dirname($r->getFileName());
         $classContents = str_replace('__DIR__', sprintf("'%s'", $classFileDir), $classContents);
 
-		if ($declaration == 'class Zend_Translate'){
-		d((strpos($classContents, '{') === 0));
-		d($classContents);
-		d($useString
-               . $declaration . "\n"
-               . ((strpos($classContents, '{') === 0) ? strstr($classContents, '{') : '{' . PHP_EOL . $classContents));
-		}
-		
         return $useString
                . $declaration . "\n"
 			   . ((strpos($classContents, '{') === 0) ? strstr($classContents, '{') : '{' . PHP_EOL . $classContents);// messes up when 'implements' is on separate line
